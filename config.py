@@ -88,6 +88,6 @@ __C.EPOCH = 0
 __C.RANDOM_SEED = 304
 
 #Attribute Dictionary for Dataset
-__C.TRAIN_CSV = '/home/shu/cv/ForTraining/CALFW_trainlist.csv'
-__C.VAL_CSV = '/home/shu/cv/ForTraining/CALFW_validationlist.csv'
-__C.IMG_DIR = '/home/shu/cv/ForTraining/CALFW/' 
+__C.TRAIN_CSV = './ForTraining/CALFW_trainlist.csv'
+__C.VAL_CSV = './ForTraining/CALFW_validationlist.csv'
+__C.IMG_DIR = './ForTraining/CALFW/' 
