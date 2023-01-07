@@ -254,7 +254,8 @@ def train(train_loader, net, optim_net, curr_epoch, writer, scheduler_net, max_i
         # TODO
         # loss auc rank1...
         arcface_loss = model_insightface.Arcface()
-        af_loss = arcface_loss(output, gt)
+        thetas = arcface_loss(output, gt)
+        af_loss = torch.nn.CrossEntropyLoss(thetas, gt)
         # TODO
         
         # contrstive loss
