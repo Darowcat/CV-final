@@ -49,7 +49,7 @@ parser.add_argument('--poly_exp', type=float, default=0.9,
                     help='polynomial LR exponent')
 parser.add_argument('--bs_mult', type=int, default=2,
                     help='Batch size for training per gpu')
-parser.add_argument('--bs_mult_val', type=int, default=1,
+parser.add_argument('--bs_mult_val', type=int, default=2,
                     help='Batch size for Validation per gpu') 
 # parser.add_argument('--crop_size', type=int, default=720,
 #                     help='training crop size')
@@ -76,6 +76,9 @@ parser.add_argument('--ckpt', type=str, default='logs/ckpt',
 parser.add_argument('--tb_path', type=str, default='logs/tb',
                     help='Save Tensorboard Path')
 
+## Arcface loss
+parser.add_argument('--af_weight', type=float, default=1.0,
+                    help='weight for Arcface loss')
 ## contrastoive loss
 parser.add_argument('--cl_weight', type=float, default=1.0,
                     help='weight for contrastive loss')
@@ -173,6 +176,16 @@ def main():
                 print("Saving pth file...")
                 # TODO
                 # save model
+                torch.save(
+                    {
+                        'epoch': epoch,
+                        'model_state_dict': net.state_dict(),
+                        'optimizer_state_dict': optim_net.state_dict(),
+                        'scheduler_state_dict': scheduler_net.state_dict(),
+                        'best_rank1': best_rank1,
+                        'best_auc': best_auc,
+                        'best_epoch': best_epoch,
+                    }, args.save_path)
                 # TODO
 
             torch.cuda.empty_cache()
@@ -182,7 +195,7 @@ def main():
             torch.cuda.empty_cache()
    
             if args.local_rank == 0:
-                if rank1 > best_rank1 and auc > best_auc:
+                if rank1 >= best_rank1 and auc > best_auc:
                     best_auc = auc
                     best_rank1 = rank1
                     best_epoch = epoch
@@ -217,6 +230,7 @@ def train(train_loader, net, optim_net, curr_epoch, writer, scheduler_net, max_i
     net.train()
     
     net_total_loss_meter = AverageMeter()
+    Arcface_loss_meter = AverageMeter()
     contrastive_loss_meter = AverageMeter()
     rank1_meter = AverageMeter()
     AUC_meter = AverageMeter()
@@ -239,6 +253,8 @@ def train(train_loader, net, optim_net, curr_epoch, writer, scheduler_net, max_i
         total_loss = 0
         # TODO
         # loss auc rank1...
+        arcface_loss = model_insightface.Arcface()
+        af_loss = arcface_loss(output, gt)
         # TODO
         
         # contrstive loss
@@ -247,9 +263,10 @@ def train(train_loader, net, optim_net, curr_epoch, writer, scheduler_net, max_i
         cl_loss = contrastive_loss(output, gt)
         # print(cl_loss)
         
+        Arcface_loss_meter.update(af_loss.item(), B)
         contrastive_loss_meter.update(cl_loss.item(), B)
 
-        total_loss = total_loss + args.cl_weight * cl_loss 
+        total_loss = total_loss + args.af_weight * af_loss + args.cl_weight * cl_loss 
         net_total_loss_meter.update(total_loss.item(), B) #devided by batch size
         
         total_loss.backward()
@@ -306,6 +323,9 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
     error_acc = 0
     dump_images = []
 
+    probs = []
+    ground_truth = []
+
     for val_idx, data in enumerate(val_loader):
         inputs, gt_image = data
 
@@ -317,10 +337,26 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
         
         # TODO
         # rank1, AUC...
+        feat1 = output[0]
+        feat2 = output[1]
+        similarity = loss.get_cosine_similarity(feat1, feat2)
+
+        probs.append(similarity)
+        if gt_cuda[0] == gt_cuda[1]:
+            ground_truth.append(1)
+        else:
+            ground_truth.append(0)
+
+        arcface_loss = model_insightface.Arcface()
+        af_loss = arcface_loss(output, gt_cuda)
+        contrastive_loss = loss.SupConLoss()
+        cl_loss = contrastive_loss(output, gt_cuda)
+
+        total_loss = args.af_weight * af_loss + args.cl_weight * cl_loss 
         # TODO 
         
         # write total loss in params 1.
-        # val_loss.update({**write total loss here**}.item(), inputs.shape[0])
+        val_loss.update(total_loss.item(), inputs.shape[0])
 
         # Logging
         if val_idx % 20 == 0:
@@ -329,9 +365,21 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
         
     # TODO
     # total rank1, AUC...
+    f = list(zip(probs, ground_truth))
+    rank = [values2 for values1,values2 in sorted(f, key=lambda x:x[0])]
+    rankList = [i + 1 for i in range(len(rank)) if rank[i] == 1]
+    posNum = 0
+    negNum = 0
+    for i in range(len(ground_truth)):
+        if(ground_truth[i] == 1):
+            posNum += 1
+        else:
+            negNum += 1
+    auc = 0
+    auc = (sum(rankList) - (posNum * (posNum + 1)) / 2) / (posNum * negNum)
     # TODO 
 
-    # return rank1, auc
+    return 0, auc
 
 
 if __name__ == '__main__':
