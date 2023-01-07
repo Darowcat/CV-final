@@ -12,7 +12,6 @@ class FaceDatasetFolder(Dataset):
         super(FaceDatasetFolder, self).__init__()
         self.transform = transforms.Compose(
             [transforms.ToPILImage(),
-             transforms.Resize(224),
              transforms.RandomHorizontalFlip(),
              transforms.ToTensor(),
              transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
@@ -40,6 +39,7 @@ class FaceDatasetFolder(Dataset):
         label = self.label[index]
         label = torch.tensor(label, dtype=torch.long)
         sample = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        sample = cv2.resize(sample, (112, 112))
 
         if self.transform is not None:
             sample = self.transform(sample)
@@ -48,25 +48,25 @@ class FaceDatasetFolder(Dataset):
     def __len__(self):
         return len(self.img_name)
 
-def get_dataset():
+def get_dataset(args):
     
     train_dataset = FaceDatasetFolder(root_dir=cfg.IMG_DIR, csv_file=cfg.TRAIN_CSV)
-    train_dataloader = DataLoader(train_dataset, batch_size=2,#args.bs_mult,
-                        shuffle=True, num_workers=0)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.bs_mult,
+                        shuffle=False, num_workers=0)
     # for i, (sample, label) in enumerate(train_dataloader):
     #     print(sample.size(),
     #             label)
     #     break
     
     val_dataset = FaceDatasetFolder(root_dir=cfg.IMG_DIR, csv_file=cfg.VAL_CSV)
-    val_dataloader = DataLoader(val_dataset, batch_size=1,#args.bs_mult_val,
-                        shuffle=True, num_workers=0)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.bs_mult_val,
+                        shuffle=False, num_workers=0)
     # for i, (sample, label) in enumerate(val_dataloader):
     #     print(sample.size(),
     #             label)
     #     break
     return train_dataloader, val_dataloader
 
-if __name__ == '__main__':
-    get_dataset()
+# if __name__ == '__main__':
+#     get_dataset()
     
