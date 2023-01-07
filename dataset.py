@@ -12,6 +12,7 @@ class FaceDatasetFolder(Dataset):
         super(FaceDatasetFolder, self).__init__()
         self.transform = transforms.Compose(
             [transforms.ToPILImage(),
+             transforms.Resize(224),
              transforms.RandomHorizontalFlip(),
              transforms.ToTensor(),
              transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
@@ -66,6 +67,6 @@ def get_dataset():
     #     break
     return train_dataloader, val_dataloader
 
-# if __name__ == '__main__':
-#     get_dataset()
+if __name__ == '__main__':
+    get_dataset()
     
