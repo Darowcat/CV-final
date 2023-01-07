@@ -8,6 +8,6 @@ If you want to run "train_v1.py", please:
   3. Fill "TODO" block for loss and save_pth
   - [x] Arcface loss
   - [ ] save path
-  - [ ] rank 1 evaluation
-  - [ ] AUC evaluation
+  - [x] rank 1 evaluation
+  - [x] AUC evaluation
     
