@@ -326,12 +326,15 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
 
     probs = []
     ground_truth = []
+    rk1_accurate_data = 0
+    total_data = 0
 
     for val_idx, data in enumerate(val_loader):
+        
         inputs, gt_image = data
 
         inputs, gt_cuda = inputs.cuda(), gt_image.cuda()
-
+        B, C, H, W = inputs.shape
         with torch.no_grad():
             output = net(inputs)
         del inputs
@@ -349,7 +352,15 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
             ground_truth.append(0)
 
         arcface_loss = model_insightface.Arcface()
-        af_loss = arcface_loss(output, gt_cuda)
+        thetas = arcface_loss(output, gt_cuda)
+        af_loss = torch.nn.CrossEntropyLoss(thetas, gt_cuda)
+
+        pred_id = np.argmax(thetas, axis = 1)
+        for i in range(B):
+            total_data += 1
+            if pred_id[i] == gt_cuda[i]:
+                rk1_accurate_data += 1
+        
         contrastive_loss = loss.SupConLoss()
         cl_loss = contrastive_loss(output, gt_cuda)
 
@@ -380,7 +391,9 @@ def validate(val_loader, net, optim, scheduler, curr_epoch, writer, curr_iter, s
     auc = (sum(rankList) - (posNum * (posNum + 1)) / 2) / (posNum * negNum)
     # TODO 
 
-    return 0, auc
+    rk1 = rk1_accurate_data / total_data
+
+    return rk1, auc
 
 
 if __name__ == '__main__':
